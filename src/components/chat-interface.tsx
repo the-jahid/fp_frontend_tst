@@ -142,14 +142,6 @@ interface MedicalAssessmentData {
   discharge_instructions?: DischargeInstructions
 }
 
-interface StoredMessage {
-  id?: string
-  content?: string
-  message?: string
-  role: string
-  createdDate: string
-  timestamp: string
-}
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -293,46 +285,6 @@ export default function ChatInterface() {
     return newSessionId
   }, [saveSessionData, loadStoredSessionData]) // Only depend on the memoized functions
 
-  // Also wrap clearAllSessionData in useCallback
-  const clearAllSessionData = useCallback(() => {
-    try {
-      console.log("🧹 Clearing all session data from localStorage...")
-      localStorage.removeItem("chatSessionData")
-      
-      // Reset all state
-      setSessions([])
-      setMessagesBySession({})
-      setMessages([])
-      setCurrentSessionId("")
-      
-      console.log("✅ All session data cleared")
-      
-      // Create a fresh new session after a brief delay
-      setTimeout(() => {
-        const newSessionId = generateSessionId()
-        const newSession: Session = {
-          id: newSessionId,
-          title: "New conversation",
-          active: true,
-          timestamp: new Date().toISOString(),
-          messageCount: 0,
-        }
-
-        setSessions([newSession])
-        setMessagesBySession({ [newSessionId]: [] })
-        setCurrentSessionId(newSessionId)
-        setMessages([])
-
-        saveSessionData({
-          sessions: [newSession],
-          messagesBySession: { [newSessionId]: [] },
-          currentSessionId: newSessionId,
-        })
-      }, 0)
-    } catch (error) {
-      console.error("❌ Error clearing session data:", error)
-    }
-  }, [saveSessionData]) // Remove createNewSession dependency
 
   // Initialize session management - runs once on mount
   useEffect(() => {
@@ -1199,11 +1151,11 @@ export default function ChatInterface() {
                     <p className="text-xs text-gray-400 mt-1">
                       {sessionToDelete.messageCount} messages • {new Date(sessionToDelete.timestamp).toLocaleDateString()}
                     </p>
-                    {sessionToDelete.lastMessage && (
-                      <p className="text-xs text-gray-400 mt-1 truncate">
-                        "{sessionToDelete.lastMessage}"
-                      </p>
-                    )}
+                  {sessionToDelete.lastMessage && (
+  <p className="text-xs text-gray-400 mt-1 truncate">
+    &quot;{sessionToDelete.lastMessage}&quot;
+  </p>
+)}
                   </div>
                   <p className="text-sm text-red-300 font-medium">
                     This action cannot be undone. All messages in this session will be permanently deleted.
@@ -1260,8 +1212,8 @@ export default function ChatInterface() {
             <ChevronDown className="w-4 h-4 text-gray-400" />
           </div>
           <div className="text-xs lg:text-sm text-gray-400 hidden sm:block">
-            Active Session: {currentSessionId.substring(0, 8)}... ({messages.length} messages)
-          </div>
+  Active Session: {currentSessionId.substring(0, 8)}&hellip; ({messages.length} messages)
+</div>
         </header>
 
         {/* Messages */}
