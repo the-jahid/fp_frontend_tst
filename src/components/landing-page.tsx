@@ -1,9 +1,14 @@
-import { SignInButton, SignUpButton } from "@clerk/nextjs"
+import { SignInButton, SignUpButton, SignOutButton } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Stethoscope, ChevronDown, HelpCircle, Activity, Heart, Brain, AlertTriangle, Menu } from 'lucide-react'
+import { Stethoscope, ChevronDown, HelpCircle, Activity, Heart, Brain, AlertTriangle, Menu, MessageSquare, LogOut } from 'lucide-react'
+import { auth } from "@clerk/nextjs/server"
+import Link from "next/link"
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { userId } = await auth()
+  const isLoggedIn = !!userId
+
   return (
     <div className="min-h-screen bg-[#212121] text-white">
       {/* Header */}
@@ -20,20 +25,45 @@ export default function LandingPage() {
 
         {/* Desktop Navigation */}
         <div className="hidden sm:flex items-center gap-2 lg:gap-3">
-          <SignInButton mode="modal">
-            <Button
-              variant="ghost"
-              className="text-white hover:bg-gray-700 rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base border border-gray-600 hover:border-gray-500 transition-all duration-300"
-            >
-              Log in
-            </Button>
-          </SignInButton>
+          {isLoggedIn ? (
+            // Logged in state - show Chat and Logout buttons
+            <>
+              <Link href="/chat">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base font-medium transition-all duration-300 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Chat
+                </Button>
+              </Link>
 
-          <SignUpButton mode="modal">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base font-medium transition-all duration-300">
-              Sign up for free
-            </Button>
-          </SignUpButton>
+              <SignOutButton>
+                <Button
+                  variant="ghost"
+                  className="text-white hover:bg-gray-700 rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base border border-gray-600 hover:border-gray-500 transition-all duration-300 flex items-center gap-2"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </Button>
+              </SignOutButton>
+            </>
+          ) : (
+            // Not logged in state - show Login and Signup buttons
+            <>
+              <SignInButton mode="modal">
+                <Button
+                  variant="ghost"
+                  className="text-white hover:bg-gray-700 rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base border border-gray-600 hover:border-gray-500 transition-all duration-300"
+                >
+                  Log in
+                </Button>
+              </SignInButton>
+
+              <SignUpButton mode="modal">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-3 sm:px-4 lg:px-6 py-2 text-sm lg:text-base font-medium transition-all duration-300">
+                  Sign up for free
+                </Button>
+              </SignUpButton>
+            </>
+          )}
 
           <Button
             variant="ghost"
@@ -130,26 +160,68 @@ export default function LandingPage() {
 
           {/* Call to Action */}
           <div className="text-center px-2">
-            <SignUpButton mode="modal">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 sm:px-8 lg:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 w-full sm:w-auto">
-                <span className="flex items-center justify-center gap-2">
-                  Start Clinical Assessment
-                  <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
-                </span>
-              </Button>
-            </SignUpButton>
+            {isLoggedIn ? (
+              // Logged in state - show "Go to Chat" button
+              <Link href="/chat">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 sm:px-8 lg:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 w-full sm:w-auto">
+                  <span className="flex items-center justify-center gap-2">
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+                    Go to Chat
+                  </span>
+                </Button>
+              </Link>
+            ) : (
+              // Not logged in state - show "Start Clinical Assessment" button
+              <SignUpButton mode="modal">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 sm:px-8 lg:px-12 py-3 sm:py-4 text-base sm:text-lg font-semibold transition-all duration-300 w-full sm:w-auto">
+                  <span className="flex items-center justify-center gap-2">
+                    Start Clinical Assessment
+                    <Stethoscope className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                </Button>
+              </SignUpButton>
+            )}
           </div>
 
-          {/* Mobile Auth Buttons */}
+          {/* Mobile Auth/Chat Buttons */}
           <div className="sm:hidden mt-6 px-2 space-y-3">
-            <SignInButton mode="modal">
-              <Button
-                variant="outline"
-                className="w-full text-white hover:bg-gray-700 rounded-lg py-3 border border-gray-600 hover:border-gray-500 transition-all duration-300"
-              >
-                Log in
-              </Button>
-            </SignInButton>
+            {isLoggedIn ? (
+              // Logged in mobile state
+              <>
+                <Link href="/chat">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 transition-all duration-300 flex items-center justify-center gap-2">
+                    <MessageSquare className="w-4 h-4" />
+                    Chat
+                  </Button>
+                </Link>
+                <SignOutButton>
+                  <Button
+                    variant="outline"
+                    className="w-full text-white hover:bg-gray-700 rounded-lg py-3 border border-gray-600 hover:border-gray-500 transition-all duration-300 flex items-center justify-center gap-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </Button>
+                </SignOutButton>
+              </>
+            ) : (
+              // Not logged in mobile state
+              <>
+                <SignInButton mode="modal">
+                  <Button
+                    variant="outline"
+                    className="w-full text-white hover:bg-gray-700 rounded-lg py-3 border border-gray-600 hover:border-gray-500 transition-all duration-300"
+                  >
+                    Log in
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-3 transition-all duration-300">
+                    Sign up for free
+                  </Button>
+                </SignUpButton>
+              </>
+            )}
             <div className="text-center">
               <Button
                 variant="ghost"
