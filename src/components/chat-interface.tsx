@@ -142,6 +142,14 @@ interface MedicalAssessmentData {
   discharge_instructions?: DischargeInstructions
 }
 
+interface StoredMessage {
+  id?: string
+  content?: string
+  message?: string
+  role: string
+  createdDate: string
+  timestamp: string
+}
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -177,8 +185,8 @@ export default function ChatInterface() {
     ).join('-')
   }
 
-  // Load all session data from localStorage
-  const loadStoredSessionData = (): StoredSessionData | null => {
+  // Load all session data from localStorage - moved inside component and wrapped in useCallback
+  const loadStoredSessionData = useCallback((): StoredSessionData | null => {
     try {
       const storedData = localStorage.getItem("chatSessionData")
       if (storedData) {
@@ -206,7 +214,7 @@ export default function ChatInterface() {
       console.log("⚠️ Error loading stored session data:", error)
     }
     return null
-  }
+  }, [])
 
   // Save all session data to localStorage - wrapped in useCallback
   const saveSessionData = useCallback((sessionData: Partial<StoredSessionData>) => {
@@ -231,7 +239,7 @@ export default function ChatInterface() {
     } catch (error) {
       console.log("⚠️ Error saving session data:", error)
     }
-  }, [])
+  }, [loadStoredSessionData])
 
   // Create a new session - this creates ONE session ID that will be used for the ENTIRE conversation
   const createNewSession = useCallback(() => {
@@ -241,43 +249,94 @@ export default function ChatInterface() {
     console.log("💾 Flowise will remember this entire conversation using session ID:", newSessionId)
 
     const newSession: Session = {
-      id: newSessionId, // The session.id IS the Flowise session ID
+      id: newSessionId,
       title: "New conversation",
       active: true,
       timestamp: new Date().toISOString(),
       messageCount: 0,
     }
 
-    // Update sessions list - mark all others as inactive
-    const updatedSessions = [newSession, ...sessions.map((s) => ({ ...s, active: false }))]
+    // Update sessions list - mark all others as inactive using functional updates
+    setSessions(prevSessions => [newSession, ...prevSessions.map((s) => ({ ...s, active: false }))])
 
-    // Initialize empty messages for this session
-    const updatedMessagesBySession = {
-      ...messagesBySession,
+    // Initialize empty messages for this session using functional updates
+    setMessagesBySession(prevMessages => ({
+      ...prevMessages,
       [newSessionId]: [],
-    }
+    }))
 
     // Update state
     setCurrentSessionId(newSessionId)
-    setSessions(updatedSessions)
     setMessages([])
-    setMessagesBySession(updatedMessagesBySession)
 
-    // Save to localStorage
-    saveSessionData({
-      sessions: updatedSessions,
-      messagesBySession: updatedMessagesBySession,
-      currentSessionId: newSessionId,
-    })
+    // Save to localStorage - we need to get current values differently
+    // Use setTimeout to ensure state updates have completed
+    setTimeout(() => {
+      const currentData = loadStoredSessionData() || {
+        sessions: [],
+        messagesBySession: {},
+        currentSessionId: "",
+      }
+      
+      saveSessionData({
+        sessions: [newSession, ...currentData.sessions.map((s) => ({ ...s, active: false }))],
+        messagesBySession: {
+          ...currentData.messagesBySession,
+          [newSessionId]: [],
+        },
+        currentSessionId: newSessionId,
+      })
+    }, 0)
 
     console.log("✅ New chat ready with permanent session ID:", newSessionId)
     console.log("📝 Ready to send messages - all will use the SAME session ID")
     return newSessionId
-  }, [sessions, messagesBySession, saveSessionData])
+  }, [saveSessionData, loadStoredSessionData]) // Only depend on the memoized functions
+
+  // Also wrap clearAllSessionData in useCallback
+  const clearAllSessionData = useCallback(() => {
+    try {
+      console.log("🧹 Clearing all session data from localStorage...")
+      localStorage.removeItem("chatSessionData")
+      
+      // Reset all state
+      setSessions([])
+      setMessagesBySession({})
+      setMessages([])
+      setCurrentSessionId("")
+      
+      console.log("✅ All session data cleared")
+      
+      // Create a fresh new session after a brief delay
+      setTimeout(() => {
+        const newSessionId = generateSessionId()
+        const newSession: Session = {
+          id: newSessionId,
+          title: "New conversation",
+          active: true,
+          timestamp: new Date().toISOString(),
+          messageCount: 0,
+        }
+
+        setSessions([newSession])
+        setMessagesBySession({ [newSessionId]: [] })
+        setCurrentSessionId(newSessionId)
+        setMessages([])
+
+        saveSessionData({
+          sessions: [newSession],
+          messagesBySession: { [newSessionId]: [] },
+          currentSessionId: newSessionId,
+        })
+      }, 0)
+    } catch (error) {
+      console.error("❌ Error clearing session data:", error)
+    }
+  }, [saveSessionData]) // Remove createNewSession dependency
 
   // Initialize session management - runs once on mount
   useEffect(() => {
-    const initializeSession = () => {
+    const initializeSession = async () => {
       try {
         setIsLoadingHistory(true)
         console.log("🚀 Initializing session from localStorage...")
@@ -319,7 +378,7 @@ export default function ChatInterface() {
     }
 
     initializeSession()
-  }, [createNewSession]) // Now createNewSession is stable due to useCallback
+  }, [loadStoredSessionData, createNewSession]) // Use the memoized functions
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -624,8 +683,6 @@ export default function ChatInterface() {
       setIsDeleting(false)
     }
   }
-
-
 
   const renderAssistantMessage = (message: Message) => {
     console.log("🔍 Rendering message:", message.content.substring(0, 100))
@@ -1144,9 +1201,7 @@ export default function ChatInterface() {
                     </p>
                     {sessionToDelete.lastMessage && (
                       <p className="text-xs text-gray-400 mt-1 truncate">
-                          <p className="text-xs text-gray-400 mt-1 truncate">
-    &quot;{sessionToDelete.lastMessage}&quot;
-  </p>
+                        "{sessionToDelete.lastMessage}"
                       </p>
                     )}
                   </div>
@@ -1169,7 +1224,7 @@ export default function ChatInterface() {
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 text-white border-0"
             >
-            {isDeleting ? (
+              {isDeleting ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Deleting...
@@ -1177,7 +1232,6 @@ export default function ChatInterface() {
               ) : (
                 <div className="flex items-center gap-2">
                   <Trash2 className="w-4 h-4" />
-                  {/* eslint-disable-next-line react/no-unescaped-entities */}
                   Delete
                 </div>
               )}
@@ -1216,7 +1270,7 @@ export default function ChatInterface() {
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full px-4">
                 <div className="text-center mb-6 lg:mb-8">
-                  <Stethoscope className="w-12 h-12 lg:w-16 lg:w-16 text-blue-400 mx-auto mb-4" />
+                  <Stethoscope className="w-12 h-12 lg:w-16 lg:h-16 text-blue-400 mx-auto mb-4" />
                   <h1 className="text-2xl lg:text-4xl font-normal mb-4 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
                     Emergency Clinical Decision Support
                   </h1>
