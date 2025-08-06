@@ -19,13 +19,13 @@ export default async function LandingPage() {
             <span className="text-lg sm:text-xl font-semibold text-white">
               ECDS v5.0
             </span>
-            <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400 group-hover:rotate-180 transition-transform duration-300" />
+      
           </div>
         </div>
 
         {/* Desktop Navigation */}
         <div className="hidden sm:flex items-center gap-2 lg:gap-3">
-          {isLoggedIn ? (
+          {userId ? (
             // Logged in state - show Chat and Logout buttons
             <>
               <Link href="/chat">
