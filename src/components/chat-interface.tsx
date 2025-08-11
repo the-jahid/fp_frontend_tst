@@ -22,6 +22,10 @@ interface CriticalAction {
   evidence?: string
 }
 
+
+type PrimitivePrintable = string | number | boolean
+type KV = Record<string, PrimitivePrintable | null | undefined>
+
 interface DiagnosisItem {
   diagnosis: string
   pre_test_probability: string
@@ -42,6 +46,7 @@ interface DifferentialDiagnosis {
   tier_4_rare?: DiagnosisItem[]
   checklist?: string[]
 }
+
 
 interface ImmediateAssessment {
   patient: string
@@ -157,10 +162,14 @@ function joinIf(values?: (string | undefined)[], sep = " • ") {
   return (values ?? []).filter(Boolean).join(sep)
 }
 
-function kvToLines(obj?: Record<string, any>) {
+function kvToLines<T extends KV>(obj?: T): string {
   if (!obj) return ""
   return Object.entries(obj)
-    .filter(([, v]) => v !== undefined && v !== "N/A" && v !== "")
+    .filter(([, v]) => {
+      if (v === null || v === undefined) return false
+      if (typeof v === "string" && (v === "N/A" || v === "")) return false
+      return true
+    })
     .map(([k, v]) => `${k.replace(/_/g, " ")}: ${v}`)
     .join(" • ")
 }
@@ -464,8 +473,10 @@ function TreatmentTable({ items }: { items: TreatmentByProblem[] }) {
           {items.map((p, i) => (
             <TableRow key={i}>
               <TableCell className="text-gray-200 font-medium">{p.problem}</TableCell>
-              <TableCell className="text-gray-300">{kvToLines(p.definitive_treatment) || "-"}</TableCell>
-              <TableCell className="text-gray-300">{kvToLines(p.interventions as any) || "-"}</TableCell>
+              <TableCell className="text-gray-300">{kvToLines(p.interventions) || "-"}</TableCell>
+              <TableCell className="text-gray-300">
+  {kvToLines(p.interventions /* was: as any */) || "-"}
+</TableCell>
               <TableCell className="text-gray-300">
                 {p.symptom_control
                   ? kvToLines({
