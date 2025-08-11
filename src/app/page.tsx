@@ -7,7 +7,7 @@ export default async function Home() {
   const {userId} = await auth()
 
   if(userId) {
-    redirect('https://fp-frontend-tst.vercel.app/chat')
+    redirect('/chat')
   }
 
   return  <LandingPage /> ;
